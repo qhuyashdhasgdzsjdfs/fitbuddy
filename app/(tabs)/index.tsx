@@ -1,98 +1,138 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import AppButton from "../../components/ui/AppButton";
+import StatCard from "../../components/ui/StatCard";
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <Text style={styles.title}>FitBuddy</Text>
+      <Text style={styles.subtitle}>Chào Nguyễn Văn A 👋</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <AppButton title="Get Started" onPress={() => alert("Hello")} />
+      {/* Health Score */}
+
+      <View style={styles.scoreCard}>
+        <Text style={styles.scoreLabel}>Điểm sức khỏe</Text>
+        <Text style={styles.score}>250</Text>
+        <Text style={styles.level}>Level 3</Text>
+      </View>
+
+      {/* Stats */}
+      <StatCard
+        title="Bước chân"
+        value="4,520"
+        progress={0.45}
+        icon="walk"
+        color="#22C55E"
+      />
+
+      <StatCard
+        title="Nước uống"
+        value="4/8"
+        progress={0.5}
+        icon="water"
+        color="#3B82F6"
+      />
+
+      <StatCard
+        title="Giấc ngủ"
+        value="8h"
+        progress={1}
+        icon="moon"
+        color="#8B5CF6"
+      />
+
+      <StatCard
+        title="Năng lượng"
+        value="176 kcal"
+        progress={0.3}
+        icon="flash"
+        color="#F59E0B"
+      />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#EEF3F7",
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginTop: 40,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+
+  subtitle: {
+    color: "#6B7280",
+    marginBottom: 20,
+  },
+
+  scoreCard: {
+    backgroundColor: "#16A34A",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+  },
+
+  scoreLabel: { color: "white", opacity: 0.9 },
+
+  score: {
+    color: "white",
+    fontSize: 40,
+    fontWeight: "bold",
+    marginVertical: 6,
+  },
+
+  level: { color: "white", opacity: 0.9 },
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+
+  card: {
+    backgroundColor: "white",
+    width: "48%",
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+
+  cardTitle: {
+    color: "#6B7280",
+    marginBottom: 6,
+  },
+
+  cardValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+
+  progressBg: {
+    height: 6,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#22C55E",
   },
 });
