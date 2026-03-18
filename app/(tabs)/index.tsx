@@ -1,6 +1,6 @@
-import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import AppButton from "../../components/ui/AppButton";
+import StatCard from "../../components/ui/StatCard";
 
 export default function HomeScreen() {
   return (
@@ -50,28 +50,6 @@ export default function HomeScreen() {
         color="#F59E0B"
       />
     </ScrollView>
-  );
-}
-
-function StatCard({ title, value, progress, icon, color }: any) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Ionicons name={icon} size={20} color={color} />
-        <Text style={styles.cardTitle}>{title}</Text>
-      </View>
-
-      <Text style={styles.cardValue}>{value}</Text>
-
-      <View style={styles.progressBg}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${progress * 100}%`, backgroundColor: color },
-          ]}
-        />
-      </View>
-    </View>
   );
 }
 
