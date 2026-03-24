@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import StatCard from "../../components/ui/StatCard";
+import StatCard from "../../components/home/StatCard";
 
 export default function StatsScreen() {
   return (

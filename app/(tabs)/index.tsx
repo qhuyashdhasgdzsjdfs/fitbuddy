@@ -1,16 +1,72 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import AppButton from "../../components/ui/AppButton";
-import StatCard from "../../components/ui/StatCard";
+import StatCard from "@/components/home/StatCard";
+import { auth } from "@/constants/firebase";
+import { getDailyLog } from "@/services/dailyLog";
+import { Redirect } from "expo-router";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function HomeScreen() {
+  const [data, setData] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 🔥 LẤY USER CHUẨN (fix auto login)
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // 🔥 LOAD DATA SAU KHI CÓ USER
+  useEffect(() => {
+    if (!user) return;
+
+    const loadData = async () => {
+      try {
+        const res = await getDailyLog(user.uid);
+        setData(res);
+
+        console.log("USER:", user.uid);
+        console.log("DATA:", res);
+      } catch (err) {
+        console.log("ERROR:", err);
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  // 🔥 ĐANG LOAD AUTH
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  // 🔥 CHƯA LOGIN → VỀ LOGIN
+  if (!user) {
+    return <Redirect href="/login" />;
+  }
+
+  // 🔥 UI CHÍNH
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.title}>FitBuddy</Text>
-      <Text style={styles.subtitle}>Chào Nguyễn Văn A 👋</Text>
+      <Text style={styles.subtitle}>Chào bạn 👋</Text>
 
-      <AppButton title="Get Started" onPress={() => alert("Hello")} />
       {/* Health Score */}
-
       <View style={styles.scoreCard}>
         <Text style={styles.scoreLabel}>Điểm sức khỏe</Text>
         <Text style={styles.score}>250</Text>
@@ -20,32 +76,32 @@ export default function HomeScreen() {
       {/* Stats */}
       <StatCard
         title="Bước chân"
-        value="4,520"
-        progress={0.45}
+        value={data?.steps || 0}
+        progress={(data?.steps || 0) / 10000}
         icon="walk"
         color="#22C55E"
       />
 
       <StatCard
         title="Nước uống"
-        value="4/8"
-        progress={0.5}
+        value={`${data?.water || 0} ml`}
+        progress={(data?.water || 0) / 2000}
         icon="water"
         color="#3B82F6"
       />
 
       <StatCard
         title="Giấc ngủ"
-        value="8h"
-        progress={1}
+        value={`${data?.sleepHours || 0}h`}
+        progress={(data?.sleepHours || 0) / 8}
         icon="moon"
         color="#8B5CF6"
       />
 
       <StatCard
         title="Năng lượng"
-        value="176 kcal"
-        progress={0.3}
+        value={`${data?.calories || 0} kcal`}
+        progress={(data?.calories || 0) / 500}
         icon="flash"
         color="#F59E0B"
       />
@@ -58,6 +114,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#EEF3F7",
     padding: 20,
+  },
+
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   title: {
@@ -88,51 +150,4 @@ const styles = StyleSheet.create({
   },
 
   level: { color: "white", opacity: 0.9 },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-
-  card: {
-    backgroundColor: "white",
-    width: "48%",
-    padding: 16,
-    borderRadius: 20,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-
-  cardTitle: {
-    color: "#6B7280",
-    marginBottom: 6,
-  },
-
-  cardValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 6,
-  },
-
-  progressBg: {
-    height: 6,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#22C55E",
-  },
 });
