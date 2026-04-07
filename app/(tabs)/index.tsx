@@ -1,6 +1,8 @@
 import StatCard from "@/components/home/StatCard";
 import { auth } from "@/constants/firebase";
+import { getLatestActivity } from "@/services/activityStorage";
 import { getDailyLog } from "@/services/dailyLog";
+import { getLatestMood } from "@/services/moodService";
 import { Redirect } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useEffect, useState } from "react";
@@ -16,6 +18,8 @@ export default function HomeScreen() {
   const [data, setData] = useState<any>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mood, setMood] = useState<any>(null);
+  const [activity, setActivity] = useState<any>(null);
 
   // 🔥 LẤY USER CHUẨN (fix auto login)
   useEffect(() => {
@@ -34,10 +38,15 @@ export default function HomeScreen() {
     const loadData = async () => {
       try {
         const res = await getDailyLog(user.uid);
-        setData(res);
+        const moodData = await getLatestMood(user.uid);
+        const activityData = await getLatestActivity(user.uid);
 
-        console.log("USER:", user.uid);
-        console.log("DATA:", res);
+        setData(res);
+        setMood(moodData);
+        setActivity(activityData);
+
+        console.log("MOOD:", moodData);
+        console.log("ACTIVITY:", activityData);
       } catch (err) {
         console.log("ERROR:", err);
       }
@@ -84,8 +93,8 @@ export default function HomeScreen() {
 
       <StatCard
         title="Nước uống"
-        value={`${data?.water || 0} ml`}
-        progress={(data?.water || 0) / 2000}
+        value={activity?.steps || 0}
+        progress={(activity?.steps || 0) / 10000}
         icon="water"
         color="#3B82F6"
       />
@@ -104,6 +113,25 @@ export default function HomeScreen() {
         progress={(data?.calories || 0) / 500}
         icon="flash"
         color="#F59E0B"
+      />
+      <StatCard
+        title="Tâm trạng"
+        value={
+          mood?.mood === "very_happy"
+            ? "😄"
+            : mood?.mood === "happy"
+              ? "🙂"
+              : mood?.mood === "normal"
+                ? "😐"
+                : mood?.mood === "sad"
+                  ? "😢"
+                  : mood?.mood === "angry"
+                    ? "😡"
+                    : "--"
+        }
+        progress={1}
+        icon="happy"
+        color="#F472B6"
       />
     </ScrollView>
   );

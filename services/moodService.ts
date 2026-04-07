@@ -1,40 +1,70 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth, db } from "@/constants/firebase";
+import {
+    addDoc,
+    collection,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    where,
+} from "firebase/firestore";
 
-const MOOD_KEY = "MOOD_DATA";
-
-export type MoodType = "Happy" | "Neutral" | "Stressed";
-
-export interface MoodItem {
-  mood: MoodType;
-  date: string;
-}
-
-// Lưu mood
-export const saveMood = async (mood: MoodType): Promise<void> => {
+export const saveMood = async (mood: string, period: string) => {
   try {
-    const existing = await AsyncStorage.getItem(MOOD_KEY);
-    const moods: MoodItem[] = existing ? JSON.parse(existing) : [];
+    const user = auth.currentUser;
 
-    const newMood: MoodItem = {
+    if (!user) {
+      console.log("❌ Chưa đăng nhập");
+      return;
+    }
+
+    const today = new Date().toDateString();
+
+    // 🔍 kiểm tra đã lưu chưa
+    const q = query(
+      collection(db, "moods"),
+      where("userId", "==", user.uid),
+      where("date", "==", today),
+      where("period", "==", period),
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      console.log("⚠️ Đã lưu mood hôm nay rồi");
+      return;
+    }
+
+    // ✅ lưu mới
+    await addDoc(collection(db, "moods"), {
+      userId: user.uid,
       mood,
-      date: new Date().toISOString(),
-    };
+      period, // sáng hoặc tối
+      date: today,
+      createdAt: new Date(),
+    });
 
-    moods.push(newMood);
-
-    await AsyncStorage.setItem(MOOD_KEY, JSON.stringify(moods));
+    console.log("✅ Mood saved:", mood, period);
   } catch (error) {
-    console.log("Error saving mood:", error);
+    console.log("❌ Save mood error:", error);
   }
 };
-
-// Lấy mood
-export const getMoods = async (): Promise<MoodItem[]> => {
+export const getLatestMood = async (userId: string) => {
   try {
-    const data = await AsyncStorage.getItem(MOOD_KEY);
-    return data ? JSON.parse(data) : [];
+    const q = query(
+      collection(db, "moods"),
+      where("userId", "==", userId),
+      orderBy("createdAt", "desc"),
+      limit(1),
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) return null;
+
+    return snapshot.docs[0].data();
   } catch (error) {
-    console.log(error);
-    return [];
+    console.log("❌ Get mood error:", error);
+    return null;
   }
 };
