@@ -79,6 +79,21 @@ export async function getTodayMoods(userId: string): Promise<DailyMoodRecord> {
   return record;
 }
 
+/**
+ * Fetch the single most recent mood entry for a user.
+ */
+export async function getLatestMood(userId: string): Promise<MoodEntry | null> {
+  const db = getDb();
+  const q = query(
+    collection(db, COLLECTION),
+    where("userId", "==", userId),
+    orderBy("timestamp", "desc"),
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return snapshot.docs[0].data() as MoodEntry;
+}
+
 export async function getRecentMoods(
   userId: string,
   days = 7,
