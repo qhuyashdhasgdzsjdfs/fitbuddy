@@ -2,7 +2,6 @@ import StatCard from "@/components/home/StatCard";
 import { auth } from "@/constants/firebase";
 import { getLatestActivity } from "@/services/activityStorage";
 import { getDailyLog } from "@/services/dailyLog";
-import { getLatestMood } from "@/services/moodService";
 import { Redirect } from "expo-router";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { useEffect, useState } from "react";

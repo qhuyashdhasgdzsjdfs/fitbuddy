@@ -1,70 +1,101 @@
-import { auth, db } from "@/constants/firebase";
+// services/moodService.ts
+
 import {
-    addDoc,
-    collection,
-    getDocs,
-    limit,
-    orderBy,
-    query,
-    where,
+  DailyMoodRecord,
+  MoodEntry,
+  MoodType,
+  SessionType,
+} from "@/types/mood";
+import { getApp } from "firebase/app";
+import {
+  collection,
+  doc,
+  getDocs,
+  getFirestore,
+  orderBy,
+  query,
+  setDoc,
+  where,
 } from "firebase/firestore";
 
-export const saveMood = async (mood: string, period: string) => {
-  try {
-    const user = auth.currentUser;
+// ✅ Lazy: không import db từ firebase.ts nữa
+// Gọi getFirestore(getApp()) bên trong function để tránh circular dependency
+function getDb() {
+  return getFirestore(getApp());
+}
 
-    if (!user) {
-      console.log("❌ Chưa đăng nhập");
-      return;
-    }
+const COLLECTION = "moods";
 
-    const today = new Date().toDateString();
+export function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
 
-    // 🔍 kiểm tra đã lưu chưa
-    const q = query(
-      collection(db, "moods"),
-      where("userId", "==", user.uid),
-      where("date", "==", today),
-      where("period", "==", period),
-    );
+export function getCurrentSession(): SessionType {
+  const hour = new Date().getHours();
+  return hour >= 5 && hour < 12 ? "morning" : "evening";
+}
 
-    const snapshot = await getDocs(q);
+export async function saveMood(
+  userId: string,
+  mood: MoodType,
+  session: SessionType,
+  note?: string,
+): Promise<void> {
+  const db = getDb();
+  const date = formatDate(new Date());
+  const docId = `${userId}_${date}_${session}`;
 
-    if (!snapshot.empty) {
-      console.log("⚠️ Đã lưu mood hôm nay rồi");
-      return;
-    }
+  const entry: MoodEntry = {
+    userId,
+    mood,
+    session,
+    note: note ?? "",
+    timestamp: Date.now(),
+    date,
+  };
 
-    // ✅ lưu mới
-    await addDoc(collection(db, "moods"), {
-      userId: user.uid,
-      mood,
-      period, // sáng hoặc tối
-      date: today,
-      createdAt: new Date(),
-    });
+  await setDoc(doc(db, COLLECTION, docId), entry);
+}
 
-    console.log("✅ Mood saved:", mood, period);
-  } catch (error) {
-    console.log("❌ Save mood error:", error);
-  }
-};
-export const getLatestMood = async (userId: string) => {
-  try {
-    const q = query(
-      collection(db, "moods"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc"),
-      limit(1),
-    );
+export async function getTodayMoods(userId: string): Promise<DailyMoodRecord> {
+  const db = getDb();
+  const date = formatDate(new Date());
 
-    const snapshot = await getDocs(q);
+  const q = query(
+    collection(db, COLLECTION),
+    where("userId", "==", userId),
+    where("date", "==", date),
+  );
 
-    if (snapshot.empty) return null;
+  const snapshot = await getDocs(q);
+  const record: DailyMoodRecord = { date };
 
-    return snapshot.docs[0].data();
-  } catch (error) {
-    console.log("❌ Get mood error:", error);
-    return null;
-  }
-};
+  snapshot.forEach((d) => {
+    const entry = d.data() as MoodEntry;
+    if (entry.session === "morning") record.morning = entry;
+    if (entry.session === "evening") record.evening = entry;
+  });
+
+  return record;
+}
+
+export async function getRecentMoods(
+  userId: string,
+  days = 7,
+): Promise<MoodEntry[]> {
+  const db = getDb();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffDate = formatDate(cutoff);
+
+  const q = query(
+    collection(db, COLLECTION),
+    where("userId", "==", userId),
+    where("date", ">=", cutoffDate),
+    orderBy("date", "desc"),
+    orderBy("timestamp", "desc"),
+  );
+
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((d) => d.data() as MoodEntry);
+}
