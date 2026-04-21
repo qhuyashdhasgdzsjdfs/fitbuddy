@@ -22,12 +22,9 @@ import {
   getRecentActivities,
   saveActivity,
 } from "@/services/activityService";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { saveLeaderboardEntry } from "@/services/leaderboardService";
 
 const DAILY_GOAL = 10_000;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getUserId(): string {
   try {
@@ -47,8 +44,6 @@ function dayLabel(dateStr: string): string {
   return days[d.getDay()];
 }
 
-// ─── Ring Progress ────────────────────────────────────────────────────────────
-
 function RingProgress({
   progress,
   steps,
@@ -56,16 +51,11 @@ function RingProgress({
   progress: number;
   steps: number;
 }) {
-  const size = 180;
-  const stroke = 14;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
+  const size = 180,
+    stroke = 14;
   const pct = Math.min(progress, 1);
-  const dashOffset = circ * (1 - pct);
-
   return (
     <View style={ring.container}>
-      {/* Background track */}
       <View
         style={[
           ring.track,
@@ -78,8 +68,6 @@ function RingProgress({
           },
         ]}
       />
-
-      {/* Foreground arc (approximated with border) */}
       <View
         style={[
           ring.arc,
@@ -97,8 +85,6 @@ function RingProgress({
           },
         ]}
       />
-
-      {/* Center text */}
       <View style={ring.center}>
         <Text style={ring.stepNum}>{steps.toLocaleString()}</Text>
         <Text style={ring.stepLabel}>bước</Text>
@@ -123,8 +109,6 @@ const ring = StyleSheet.create({
   stepLabel: { fontSize: 14, color: "#6B7280", marginTop: -2 },
   goalLabel: { fontSize: 11, color: "#9CA3AF", marginTop: 4 },
 });
-
-// ─── Stat Pill ────────────────────────────────────────────────────────────────
 
 function StatPill({
   icon,
@@ -178,19 +162,16 @@ const pill = StyleSheet.create({
   unit: { fontSize: 11, color: "#6B7280", marginTop: 1 },
 });
 
-// ─── Weekly Bar Chart ─────────────────────────────────────────────────────────
-
 function WeeklyChart({ history }: { history: ActivityEntry[] }) {
   const maxSteps = Math.max(...history.map((h) => h.steps), 1);
   const today = new Date().toISOString().split("T")[0];
-
   return (
     <View style={chart.container}>
       <Text style={chart.title}>📅 7 ngày gần nhất</Text>
       <View style={chart.bars}>
         {history.map((item) => {
-          const pct = item.steps / maxSteps;
-          const isToday = item.date === today;
+          const pct = item.steps / maxSteps,
+            isToday = item.date === today;
           return (
             <View key={item.date} style={chart.barCol}>
               <Text style={chart.barVal}>
@@ -253,20 +234,15 @@ const chart = StyleSheet.create({
   barDay: { fontSize: 10, color: "#9CA3AF", marginTop: 4 },
 });
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 export default function StatsScreen() {
   const userId = getUserId();
-
   const { steps, distanceKm, calories, available, error } = usePedometer();
   const [history, setHistory] = useState<ActivityEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
-
   const progress = steps / DAILY_GOAL;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Load weekly history on focus
   useFocusEffect(
     useCallback(() => {
       loadHistory();
@@ -276,9 +252,7 @@ export default function StatsScreen() {
   async function loadHistory() {
     try {
       const data = await getRecentActivities(userId, 7);
-      // Fill missing days with 0
-      const filled = buildWeek(data);
-      setHistory(filled);
+      setHistory(buildWeek(data));
     } catch (e) {
       console.error("loadHistory error:", e);
     }
@@ -289,7 +263,6 @@ export default function StatsScreen() {
     data.forEach((d) => {
       map[d.date] = d;
     });
-
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (6 - i));
@@ -313,7 +286,6 @@ export default function StatsScreen() {
       return;
     }
     setSaving(true);
-    // Pulse animation
     Animated.sequence([
       Animated.timing(pulseAnim, {
         toValue: 0.94,
@@ -325,6 +297,12 @@ export default function StatsScreen() {
 
     try {
       await saveActivity(userId, steps, distanceKm, calories);
+
+      // ✅ Lưu leaderboard — tài khoản khác sẽ thấy
+      const user = getAuth(getApp()).currentUser;
+      const name = user?.displayName ?? user?.email?.split("@")[0] ?? "Bạn";
+      await saveLeaderboardEntry(userId, name, steps);
+
       setLastSaved(Date.now());
       await loadHistory();
       Alert.alert(
@@ -332,14 +310,12 @@ export default function StatsScreen() {
         `${steps.toLocaleString()} bước hôm nay đã được ghi lại.`,
       );
     } catch (e) {
-      console.error("saveActivity error:", e);
+      console.error("handleSave error:", e);
       Alert.alert("Lỗi", "Không thể lưu. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
   }
-
-  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <ScrollView
@@ -347,7 +323,6 @@ export default function StatsScreen() {
       contentContainerStyle={s.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>Hoạt động hôm nay</Text>
         <Text style={s.subtitle}>
@@ -359,21 +334,17 @@ export default function StatsScreen() {
         </Text>
       </View>
 
-      {/* Unavailable warning */}
       {!available && (
         <View style={s.warnBox}>
           <Ionicons name="warning-outline" size={16} color="#B45309" />
           <Text style={s.warnText}>
-            {error ?? "Thiết bị không hỗ trợ đếm bước. Dữ liệu được mô phỏng."}
+            {error ?? "Thiết bị không hỗ trợ đếm bước."}
           </Text>
         </View>
       )}
 
-      {/* Ring */}
       <View style={s.ringCard}>
         <RingProgress progress={progress} steps={steps} />
-
-        {/* Progress bar */}
         <View style={s.progressBg}>
           <Animated.View
             style={[
@@ -390,7 +361,6 @@ export default function StatsScreen() {
         </Text>
       </View>
 
-      {/* Stats pills */}
       <View style={s.pillRow}>
         <StatPill
           icon="walk-outline"
@@ -415,7 +385,6 @@ export default function StatsScreen() {
         />
       </View>
 
-      {/* Save button */}
       <TouchableOpacity
         style={[s.saveBtn, saving && s.saveBtnOff]}
         onPress={handleSave}
@@ -441,7 +410,6 @@ export default function StatsScreen() {
         </Text>
       )}
 
-      {/* Calculation note */}
       <View style={s.noteCard}>
         <Text style={s.noteTitle}>📐 Cách tính</Text>
         <Text style={s.noteText}>
@@ -452,22 +420,17 @@ export default function StatsScreen() {
         </Text>
       </View>
 
-      {/* Weekly chart */}
       {history.length > 0 && <WeeklyChart history={history} />}
     </ScrollView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#F9FAFB" },
   content: { padding: 20, paddingBottom: 40 },
-
   header: { marginBottom: 20 },
   title: { fontSize: 22, fontWeight: "800", color: "#111827" },
   subtitle: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-
   warnBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -480,7 +443,6 @@ const s = StyleSheet.create({
     borderColor: "#FDE68A",
   },
   warnText: { flex: 1, fontSize: 12, color: "#92400E" },
-
   ringCard: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -503,9 +465,7 @@ const s = StyleSheet.create({
   },
   progressFill: { height: "100%", backgroundColor: "#22C55E", borderRadius: 8 },
   progressPct: { fontSize: 12, color: "#6B7280", marginTop: 6 },
-
   pillRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
-
   saveBtn: {
     backgroundColor: "#22C55E",
     borderRadius: 14,
@@ -528,7 +488,6 @@ const s = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 8,
   },
-
   noteCard: {
     backgroundColor: "#F0FDF4",
     borderRadius: 12,

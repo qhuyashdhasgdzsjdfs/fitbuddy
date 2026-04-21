@@ -18,7 +18,17 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen name="activity" options={{ title: "Activity" }} />
+
+      <Tabs.Screen
+        name="activity"
+        options={{
+          title: "Activity",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="walk-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="stats"
         options={{
@@ -35,6 +45,16 @@ export default function TabLayout() {
           title: "Mood",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="happy" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="reminder"
+        options={{
+          title: "Nhắc nhở",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications-outline" size={size} color={color} />
           ),
         }}
       />
