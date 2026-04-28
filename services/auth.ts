@@ -1,10 +1,8 @@
-// firebase.ts
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
+// 🔥 CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyBq6moSs0l_xoWSE-DNVqOcSRqcBsKexRk",
   authDomain: "fitbuddy-c1c7f.firebaseapp.com",
@@ -16,8 +14,9 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-console.log("Firebase connected:", app);
 
-export const auth = getAuth(app);
+// 🔥 FIRESTORE
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+
+// 🔥 AUTH (ổn định, không lỗi)
+export const auth = getAuth(app);

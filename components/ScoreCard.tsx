@@ -25,4 +25,8 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   level: { color: "white", opacity: 0.9 },
+  selectedBox: {
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+  },
 });
