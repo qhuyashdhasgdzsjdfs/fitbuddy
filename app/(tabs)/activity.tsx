@@ -1,146 +1,141 @@
 // app/(tabs)/activity.tsx
 
+import { useGoals } from "@/hooks/useGoals";
 import { usePedometer } from "@/hooks/usePedometer";
-import { useEffect, useRef as useRefReact } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
-import AppCard from "../../components/ui/AppCard";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef } from "react";
+import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
 
-const STEP_GOAL = 10_000;
-
-export default function ActivityScreen() {
-  const { steps, distanceKm, calories, available, status, error } =
-    usePedometer();
-
-  const progress = Math.min(steps / STEP_GOAL, 1);
-  const barAnim = useRefReact(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(barAnim, {
-      toValue: progress,
-      duration: 400,
-      useNativeDriver: false,
-    }).start();
-  }, [steps]);
-
+function StatBox({ icon, label, value, unit, color }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string; value: string; unit: string; color: string;
+}) {
   return (
-    <View style={s.container}>
-      <Text style={s.title}>Hoạt động hôm nay</Text>
-
-      {/* Debug status — xóa sau khi xác nhận hoạt động */}
-      <View style={[s.statusBox, error ? s.statusError : s.statusOk]}>
-        <Text style={s.statusText}>🔍 {error ?? status}</Text>
+    <View style={[sb.card, { borderTopColor: color }]}>
+      <View style={[sb.iconWrap, { backgroundColor: color + "15" }]}>
+        <Ionicons name={icon} size={24} color={color} />
       </View>
-
-      {/* Progress bar */}
-      <View style={s.progressCard}>
-        <View style={s.progressHeader}>
-          <Text style={s.progressSteps}>{steps.toLocaleString()}</Text>
-          <Text style={s.progressGoal}>
-            / {STEP_GOAL.toLocaleString()} bước
-          </Text>
-        </View>
-        <View style={s.progressBg}>
-          <Animated.View
-            style={[
-              s.progressFill,
-              {
-                width: barAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["0%", "100%"],
-                }),
-              },
-            ]}
-          />
-        </View>
-        <Text style={s.progressPct}>
-          {Math.round(progress * 100)}% mục tiêu
-        </Text>
-      </View>
-
-      {/* Stat cards */}
-      <View style={s.grid}>
-        <View style={s.cardWrapper}>
-          <AppCard>
-            <Text style={s.label}>🚶 Bước chân</Text>
-            <Text style={s.value}>{steps.toLocaleString()}</Text>
-            <Text style={s.sub}>{STEP_GOAL.toLocaleString()} mục tiêu</Text>
-          </AppCard>
-        </View>
-        <View style={s.cardWrapper}>
-          <AppCard>
-            <Text style={s.label}>🔥 Calories</Text>
-            <Text style={s.value}>{calories}</Text>
-            <Text style={s.sub}>Đốt cháy (kcal)</Text>
-          </AppCard>
-        </View>
-        <View style={s.cardWrapper}>
-          <AppCard>
-            <Text style={s.label}>📍 Quãng đường</Text>
-            <Text style={s.value}>{distanceKm.toFixed(2)}</Text>
-            <Text style={s.sub}>km</Text>
-          </AppCard>
-        </View>
-        <View style={s.cardWrapper}>
-          <AppCard>
-            <Text style={s.label}>🏅 Tiến độ</Text>
-            <Text style={s.value}>{Math.round(progress * 100)}%</Text>
-            <Text style={s.sub}>Hoàn thành</Text>
-          </AppCard>
-        </View>
-      </View>
+      <Text style={[sb.value, { color }]}>{value}</Text>
+      <Text style={sb.unit}>{unit}</Text>
+      <Text style={sb.label}>{label}</Text>
     </View>
   );
 }
 
+const sb = StyleSheet.create({
+  card:    { flex: 1, backgroundColor: "#fff", borderRadius: 16, padding: 16, alignItems: "center", borderTopWidth: 3, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6 },
+  iconWrap:{ width: 44, height: 44, borderRadius: 12, justifyContent: "center", alignItems: "center", marginBottom: 10 },
+  value:   { fontSize: 24, fontWeight: "900" },
+  unit:    { fontSize: 11, color: "#9CA3AF", marginTop: 1 },
+  label:   { fontSize: 12, color: "#6B7280", fontWeight: "600", marginTop: 4 },
+});
+
+export default function ActivityScreen() {
+  const { goals }          = useGoals();
+  const { steps, distanceKm, calories, status, error } = usePedometer();
+
+  const GOAL     = goals.steps;
+  const progress = Math.min(steps / GOAL, 1);
+  const barAnim  = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(barAnim, { toValue: progress, useNativeDriver: false, tension: 40, friction: 8 }).start();
+  }, [steps]);
+
+  const color =
+    progress >= 1    ? "#22C55E" :
+    progress >= 0.6  ? "#3B82F6" :
+    progress >= 0.3  ? "#F59E0B" : "#EF4444";
+
+  return (
+    <ScrollView style={s.screen} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>Vận động</Text>
+        <Text style={s.subtitle}>{new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}</Text>
+      </View>
+
+      {/* Status */}
+      <View style={[s.statusPill, error ? s.statusErr : s.statusOk]}>
+        <Ionicons name={error ? "warning-outline" : "radio-button-on"} size={12} color={error ? "#B45309" : "#15803D"} />
+        <Text style={[s.statusText, { color: error ? "#B45309" : "#15803D" }]}>{error ?? status}</Text>
+      </View>
+
+      {/* Big ring card */}
+      <View style={s.ringCard}>
+        {/* Circular progress */}
+        <View style={s.circleWrap}>
+          <View style={[s.circleBg, { borderColor: color + "20" }]} />
+          <View style={s.circleCenter}>
+            <Text style={[s.stepBig, { color }]}>{steps.toLocaleString()}</Text>
+            <Text style={s.stepSub}>bước chân</Text>
+            <Text style={s.stepGoal}>/ {GOAL.toLocaleString()}</Text>
+          </View>
+        </View>
+
+        {/* Progress bar */}
+        <View style={s.barBg}>
+          <Animated.View style={[s.barFill, {
+            width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+            backgroundColor: color,
+          }]} />
+        </View>
+
+        <View style={s.progressRow}>
+          <Text style={[s.progressPct, { color }]}>{Math.round(progress * 100)}%</Text>
+          <Text style={s.progressLabel}>
+            {progress >= 1 ? "✅ Đã đạt mục tiêu!" : `Còn ${(GOAL - steps).toLocaleString()} bước`}
+          </Text>
+        </View>
+      </View>
+
+      {/* Stat boxes */}
+      <View style={s.grid}>
+        <StatBox icon="walk-outline"     label="Bước chân"   value={steps.toLocaleString()} unit="bước" color="#22C55E" />
+        <StatBox icon="flame-outline"    label="Calories"    value={String(calories)}        unit="kcal" color="#F59E0B" />
+      </View>
+      <View style={[s.grid, { marginTop: 12 }]}>
+        <StatBox icon="navigate-outline" label="Quãng đường" value={distanceKm.toFixed(2)}  unit="km"   color="#3B82F6" />
+        <StatBox icon="time-outline"     label="Hoạt động"   value={Math.round(steps / 100).toString()} unit="phút" color="#8B5CF6" />
+      </View>
+
+      {/* Tips */}
+      <View style={s.tipCard}>
+        <Text style={s.tipTitle}>💡 Mẹo vận động</Text>
+        <Text style={s.tipText}>• 10.000 bước = ~7 km = ~400 kcal</Text>
+        <Text style={s.tipText}>• Đi bộ 30 phút mỗi ngày giảm nguy cơ bệnh tim 35%</Text>
+        <Text style={s.tipText}>• Chia nhỏ thành 3 lần x 10 phút nếu bận</Text>
+      </View>
+
+    </ScrollView>
+  );
+}
+
 const s = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#F9FAFB" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-
-  statusBox: { borderRadius: 10, padding: 10, marginBottom: 14 },
-  statusOk: { backgroundColor: "#DCFCE7" },
-  statusError: { backgroundColor: "#FEE2E2" },
-  statusText: { fontSize: 12, color: "#374151" },
-
-  progressCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-  },
-  progressHeader: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
-    marginBottom: 10,
-  },
-  progressSteps: { fontSize: 32, fontWeight: "800", color: "#111827" },
-  progressGoal: { fontSize: 14, color: "#9CA3AF" },
-  progressBg: {
-    height: 10,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  progressFill: {
-    height: "100%",
-    backgroundColor: "#22C55E",
-    borderRadius: 10,
-  },
-  progressPct: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 6,
-    textAlign: "right",
-  },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  cardWrapper: { width: "48%", marginBottom: 12 },
-  label: { fontSize: 13, color: "#6B7280" },
-  value: { fontSize: 24, fontWeight: "800", marginTop: 6, color: "#111827" },
-  sub: { fontSize: 11, marginTop: 3, color: "#9CA3AF" },
+  screen:       { flex: 1, backgroundColor: "#F8FAFC" },
+  content:      { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 40 },
+  header:       { marginBottom: 16 },
+  title:        { fontSize: 28, fontWeight: "900", color: "#111827" },
+  subtitle:     { fontSize: 13, color: "#9CA3AF", marginTop: 3 },
+  statusPill:   { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginBottom: 16 },
+  statusOk:     { backgroundColor: "#DCFCE7" },
+  statusErr:    { backgroundColor: "#FEF3C7" },
+  statusText:   { fontSize: 11, fontWeight: "600" },
+  ringCard:     { backgroundColor: "#fff", borderRadius: 24, padding: 24, alignItems: "center", marginBottom: 16, elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 12 },
+  circleWrap:   { width: 180, height: 180, justifyContent: "center", alignItems: "center", marginBottom: 16 },
+  circleBg:     { position: "absolute", width: 180, height: 180, borderRadius: 90, borderWidth: 14 },
+  circleCenter: { alignItems: "center" },
+  stepBig:      { fontSize: 38, fontWeight: "900" },
+  stepSub:      { fontSize: 13, color: "#6B7280", marginTop: -2 },
+  stepGoal:     { fontSize: 12, color: "#9CA3AF", marginTop: 2 },
+  barBg:        { width: "100%", height: 10, backgroundColor: "#F3F4F6", borderRadius: 10, overflow: "hidden" },
+  barFill:      { height: "100%", borderRadius: 10 },
+  progressRow:  { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  progressPct:  { fontSize: 18, fontWeight: "800" },
+  progressLabel:{ fontSize: 13, color: "#6B7280" },
+  grid:         { flexDirection: "row", gap: 12 },
+  tipCard:      { backgroundColor: "#F0FDF4", borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: "#BBF7D0" },
+  tipTitle:     { fontSize: 13, fontWeight: "700", color: "#15803D", marginBottom: 8 },
+  tipText:      { fontSize: 12, color: "#166534", lineHeight: 22 },
 });
