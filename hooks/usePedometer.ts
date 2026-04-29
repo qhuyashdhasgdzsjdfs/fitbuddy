@@ -1,12 +1,16 @@
 // hooks/usePedometer.ts
-// iOS + Expo Go: gọi watchStepCount trực tiếp như code gốc hoạt động
-// baseline + watch = tổng bước cả ngày
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Pedometer } from "expo-sensors";
+import { getApp } from "firebase/app";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useEffect, useRef, useState } from "react";
 
 const STRIDE_M = 0.762;
 const KCAL_PER_STEP = 0.04;
+
+function todayStr() {
+  return new Date().toISOString().split("T")[0];
+}
 
 export interface PedometerData {
   steps: number;
@@ -23,48 +27,91 @@ export function usePedometer(): PedometerData {
   const [status, setStatus] = useState("Đang khởi động...");
   const [error, setError] = useState<string | null>(null);
 
-  const baselineRef = useRef(0);
+  // 1. TẠO STATE LẮNG NGHE SỰ THAY ĐỔI CỦA USER ID
+  const [userId, setUserId] = useState(() => {
+    return getAuth(getApp()).currentUser?.uid || "guest";
+  });
+
+  useEffect(() => {
+    const auth = getAuth(getApp());
+    const unsub = onAuthStateChanged(auth, (user) => {
+      // Mỗi khi đăng nhập/đăng xuất, biến userId sẽ tự động cập nhật
+      setUserId(user?.uid || "guest");
+    });
+    return unsub;
+  }, []);
+
+  const userBaselineRef = useRef(0);
+  const watchedStepsRef = useRef(0);
   const subRef = useRef<{ remove: () => void } | null>(null);
 
+  // 2. THUẬT TOÁN ĐẾM BƯỚC SẼ TỰ ĐỘNG CHẠY LẠI TỪ ĐẦU KHI `userId` THAY ĐỔI
   useEffect(() => {
     let cancelled = false;
 
-    // ── Bước 1: subscribe ngay lập tức (không chờ async) ──────────────────────
-    // Giống code gốc của bạn — iOS Core Motion hoạt động cách này
+    // Reset lại toàn bộ bộ đếm trên UI khi bắt đầu với user mới
+    userBaselineRef.current = 0;
+    watchedStepsRef.current = 0;
+    setSteps(0);
+
+    // ── Bước 1: Subscribe ngay lập tức ──────────────────────
     subRef.current = Pedometer.watchStepCount((result) => {
       if (cancelled) return;
-      // result.steps = số bước KỂ TỪ LÚC WATCH BẮT ĐẦU (tăng dần từ 0)
-      setSteps(baselineRef.current + result.steps);
+      watchedStepsRef.current = result.steps;
+      setSteps(userBaselineRef.current + watchedStepsRef.current);
     });
 
     setStatus("watchStepCount đã bắt đầu");
 
-    // ── Bước 2: load baseline ngầm (không block subscription) ─────────────────
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    // ── Bước 2: Load ngầm Baseline (Offset) cho từng User ─────────────────
+    async function loadUserBaseline() {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
 
-    Pedometer.getStepCountAsync(start, new Date())
-      .then((result) => {
-        if (cancelled) return;
-        baselineRef.current = result.steps;
-        setSteps(result.steps); // hiển thị ngay baseline
-        setAvailable(true);
-        setStatus("Đang theo dõi ✅");
-        console.log("[Pedometer] baseline:", result.steps);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        // Baseline thất bại không sao — watch vẫn đếm từ 0
-        console.warn("[Pedometer] baseline error:", e?.message);
-        setStatus("Đang theo dõi (không có baseline)");
-      });
+      let deviceStepsToday = 0;
+      try {
+        const result = await Pedometer.getStepCountAsync(start, new Date());
+        deviceStepsToday = result.steps;
+      } catch (e: any) {
+        if (!cancelled) {
+          console.warn("[Pedometer] baseline error:", e?.message);
+          setStatus("Đang theo dõi (không có baseline máy)");
+        }
+      }
+
+      if (cancelled) return;
+
+      // Xử lý "Điểm neo" theo ID người dùng
+      const offsetKey = `pedometer_offset_${userId}_${todayStr()}`;
+      const storedOffset = await AsyncStorage.getItem(offsetKey);
+      let offset = 0;
+
+      if (storedOffset === null) {
+        // User mới tinh: Ghi nhận số bước máy đang có làm điểm 0
+        offset = deviceStepsToday;
+        await AsyncStorage.setItem(offsetKey, offset.toString());
+      } else {
+        // Lấy lại điểm neo cũ đã lưu
+        offset = parseInt(storedOffset, 10);
+      }
+
+      // Công thức: Bước hiển thị = Tổng máy - Điểm neo
+      userBaselineRef.current = Math.max(0, deviceStepsToday - offset);
+
+      // Cập nhật lên UI
+      setSteps(userBaselineRef.current + watchedStepsRef.current);
+      setAvailable(true);
+      setStatus("Đang theo dõi ✅");
+    }
+
+    loadUserBaseline();
 
     return () => {
       cancelled = true;
       subRef.current?.remove();
       subRef.current = null;
     };
-  }, []);
+  }, [userId]); // 👈 Điểm mấu chốt: Lắng nghe sự thay đổi của userId ở đây
 
   return {
     steps,
